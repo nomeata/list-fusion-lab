@@ -45,7 +45,7 @@ driverOpts = Options
     <*> strOption
         (   short 'm'
          <> long "module"
-         <> value "Data.List"
+         <> value "ListImpls.System"
          <> help "Name of test module to import")
     <*> option
         (   short 'n'
