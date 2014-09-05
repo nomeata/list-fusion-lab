@@ -24,6 +24,7 @@ data Options = Options
     { verbose      :: Bool
     , ghcPath      :: String
     , moduleName   :: String
+    , fileTemplate :: String
     , runQuantity  :: Int
     , cliArgs      :: [String]
     }
@@ -45,6 +46,11 @@ driverOpts = Options
          <> long "module"
          <> value "Data.List"
          <> help "Name of test module to import")
+    <*> strOption
+        (   short 'f'
+         <> long "file"
+         <> value "test/ListTestsTemplate.hs"
+         <> help "Path to test driver template")
     <*> option
         (   short 'n'
          <> long "number"
@@ -69,14 +75,14 @@ runTest opts = withSystemTempFile "listlab-exe" $ \exePath h -> do
     hClose h
 
     let ghcs = splitOn "," (pack (ghcPath opts))
-        mods = splitOn "," (pack (moduleName opts))
+        mods = splitOn "," (pack (fileTemplate opts))
 
     reports <- forM (cproduct ghcs mods) $ \(ghc, modName) -> shelly $ do
         run_ (fromText ghc)
             [ "-o", pack exePath
             , "-DDATA_LIST=" <> modName
             , "-DITERATIONS=" <> pack (show (runQuantity opts))
-            , "ListTestsTemplate.hs"
+            , pack (fileTemplate opts)
             ]
         output <- run (decodeString exePath) []
         let reports = decode (encodeUtf8 (fromStrict output)) :: Maybe [Report]
