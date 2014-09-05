@@ -6,9 +6,12 @@
 
 module Benchmarks where
 
-import           DATA_LIST
+import DATA_LIST
 
+mapFusing :: Int -> [Int]
 mapFusing n    = map (+1) [0..n]
+
+mapNonFusing :: Int -> [Int]
 mapNonFusing n = map (+1) $ doNotFuse [0..n]
 
 -- Utils
