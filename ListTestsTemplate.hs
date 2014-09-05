@@ -20,7 +20,7 @@ main = do
         , nf mapNF ITERATIONS
         , nf appendF ITERATIONS
         , nf appendNF ITERATIONS
-        , nf sumConcatInits ITERATIONS
+        -- , nf sumConcatInits ITERATIONS
         ]
     B.putStr (encode reports)
   where
