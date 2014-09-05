@@ -7,6 +7,7 @@ import Control.Monad
 import Criterion.Types
 import Data.Aeson
 import Data.Data
+import Data.Maybe
 import Data.Text
 import Data.Text.Lazy (fromStrict)
 import Data.Text.Lazy.Encoding
