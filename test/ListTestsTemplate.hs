@@ -9,7 +9,7 @@ module Main where
 import           Criterion
 import           DATA_LIST
 import           Data.Aeson
-import qualified Data.ByteString.Lazy as B
+import qualified Data.ByteString.Lazy.Char8 as B
 
 main = do
     report <- benchmark' $ nf (take 1000 . repeat) ()
