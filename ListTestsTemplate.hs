@@ -13,7 +13,7 @@ import qualified Data.ByteString.Lazy.Char8 as B
 
 main = do
     reports <- mapM benchmark'
-        [ nf mapFusing ITERATIONS
-        , nf mapNonFusing ITERATIONS
+        [ nf mapF ITERATIONS
+        , nf mapNF ITERATIONS
         ]
     B.putStrLn $ encode reports
