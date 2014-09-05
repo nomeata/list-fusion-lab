@@ -25,6 +25,7 @@ data Options = Options
     , ghcPath      :: String
     , moduleName   :: String
     , fileTemplate :: String
+    , runQuantity  :: Int
     , cliArgs      :: [String]
     }
     deriving (Data, Typeable, Show, Eq)
@@ -50,6 +51,11 @@ driverOpts = Options
          <> long "file"
          <> value "test/ListTestsTemplate.hs"
          <> help "Path to test driver template")
+    <*> option
+        (   short 'n'
+         <> long "number"
+         <> value 1000
+         <> help "Number of iterations to run")
     <*> many (argument Just (metavar "ARGS"))
 
 driverSummary :: String
@@ -75,9 +81,9 @@ runTest opts = withSystemTempFile "listlab-exe" $ \exePath h -> do
         run_ (fromText ghc)
             [ "-o", pack exePath
             , "-DDATA_LIST=" <> modName
+            , "-DITERATIONS=" <> pack (show (runQuantity opts))
             , pack (fileTemplate opts)
             ]
-        -- jww (2014-09-05): Expect a list of CSV results
         output <- run (decodeString exePath) []
         let reports = decode (encodeUtf8 (fromStrict output)) :: Maybe [Report]
         return (ghc, modName, reports)
