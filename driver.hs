@@ -86,10 +86,9 @@ runTest opts = withSystemTempFile "listlab-exe" $ \exePath h -> do
                 ]
             echo $ "Collecting data from: " <> ghc <> " + " <> modName
             output <- TL.fromStrict <$> run (fromText exe) []
-            let reports = decode (encodeUtf8 output) :: Maybe [Report]
-            return (ghc, modName, reports)
-
-    print reports
+            case eitherDecode' (encodeUtf8 output) of
+                Left e  -> error $ "Failed to decode: " ++ e
+                Right x -> return (ghc, modName, x)
 
     tmplDir <- getTemplateDir
     let tmplPath = decodeString tmplDir </> "default.tpl"

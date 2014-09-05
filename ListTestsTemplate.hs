@@ -19,7 +19,7 @@ main = do
         [ nf mapF ITERATIONS
         , nf mapNF ITERATIONS
         ]
-    B.putStrLn $ encode reports
+    B.putStr (encode reports)
   where
     go = benchmarkWith' defaultConfig
         { verbosity = Quiet
