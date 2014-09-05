@@ -19,6 +19,8 @@ Executable list-fusion-lab
     Build-depends:
         base                 >= 4.6.0.1
       , optparse-applicative >= 0.8  && < 1.0
+      , aeson
+      , criterion
       , temporary
       , system-filepath
       , text

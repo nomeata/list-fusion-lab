@@ -4,10 +4,14 @@
 module Main where
 
 import Control.Monad
+import Criterion.Types
+import Data.Aeson
 import Data.Data
 import Data.Text
+import Data.Text.Lazy (fromStrict)
+import Data.Text.Lazy.Encoding
 import Data.Typeable
-import Filesystem.Path.CurrentOS
+import Filesystem.Path.CurrentOS hiding (decode)
 import Options.Applicative hiding (Success, (&))
 import Prelude hiding (FilePath)
 import Shelly.Lifted hiding ((</>), find, trace)
@@ -66,14 +70,17 @@ runTest opts = withSystemTempFile "listlab-exe" $ \exePath h -> do
     let ghcs = splitOn "," (pack (ghcPath opts))
         mods = splitOn "," (pack (fileTemplate opts))
 
-    forM_ (cproduct ghcs mods) $ \(ghc, mod) -> shelly $ do
+    reports <- forM (cproduct ghcs mods) $ \(ghc, modName) -> shelly $ do
         run_ (fromText ghc)
             [ "-o", pack exePath
-            , pack ("-DDATA_LIST=" ++ moduleName opts)
+            , "-DDATA_LIST=" <> modName
             , pack (fileTemplate opts)
             ]
         -- jww (2014-09-05): Expect a list of CSV results
-        _ <- run (decodeString exePath) []
-        return ()
+        output <- run (decodeString exePath) []
+        let reports = decode (encodeUtf8 (fromStrict output)) :: Maybe [Report]
+        return (ghc, modName, reports)
+
+    print reports
   where
     cproduct xs ys = [ (x, y) | x <- xs, y <- ys ]
