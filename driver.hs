@@ -3,7 +3,6 @@
 
 module Main where
 
-import Control.Concurrent
 import Control.Monad
 import Criterion.Main
 import Criterion.Monad
@@ -80,7 +79,6 @@ runTest opts = withSystemTempFile "listlab-exe" $ \exePath h -> do
             , "-DITERATIONS=" <> pack (show (runQuantity opts))
             , "ListTestsTemplate.hs"
             ]
-        liftIO $ threadDelay 1000000
         output <- run (decodeString exePath) []
         let reports = decode (encodeUtf8 (fromStrict output)) :: Maybe [Report]
         return (ghc, modName, reports)
