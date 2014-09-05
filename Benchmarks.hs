@@ -1,7 +1,8 @@
 {-# LANGUAGE CPP #-}
 
 #ifndef DATA_LIST
-#define DATA_LIST Data.List
+#define DATA_LIST ListImpls.System
+
 #endif
 
 module Benchmarks where

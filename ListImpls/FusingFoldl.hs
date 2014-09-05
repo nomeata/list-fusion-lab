@@ -1,12 +1,14 @@
--- Taken from GHC 7.6
+-- This is taken from GHC.List in GHC HEAD, 2014-05-09
 
 {-# LANGUAGE NoImplicitPrelude, ScopedTypeVariables, MagicHash, RankNTypes, CPP #-}
-module BaseFrom76
+module ListImpls.FusingFoldl
 #include "exports"
 where
 
 import Prelude (Maybe(..), Bool(..), Int(..), (.), otherwise, (&&), (||), String, error, id)
-import GHC.Exts (Int(..), Int#, (+#), (-#), (>=#), (<=#), (<#))
+import GHC.Exts (Int(..), Int#, (+#), (-#), isTrue#, (>=#), (<=#), (<#))
+import Data.Coerce (coerce)
+
 
 build   :: forall a. (forall b. (a -> b -> b) -> b -> b) -> [a]
 {-# INLINE [1] build #-}
@@ -53,6 +55,9 @@ foldr k z = go
 
 
 map :: (a -> b) -> [a] -> [b]
+{-# NOINLINE [1] map #-}    -- We want the RULE to fire first.
+                            -- It's recursive, so won't inline anyway,
+                            -- but saying so is more explicit
 map _ []     = []
 map f (x:xs) = f x : map f xs
 
@@ -67,7 +72,12 @@ mapFB c f = \x ys -> c (f x) ys
 "mapFB"     forall c f g.       mapFB (mapFB c f) g     = mapFB c (f.g)
   #-}
 
+{-# RULES "map/coerce" [1] map coerce = coerce #-}
+
 (++) :: [a] -> [a] -> [a]
+{-# NOINLINE [1] (++) #-}    -- We want the RULE to fire first.
+                             -- It's recursive, so won't inline anyway,
+                             -- but saying so is more explicit
 (++) []     ys = ys
 (++) (x:xs) ys = x : xs ++ ys
 
@@ -79,6 +89,7 @@ mapFB c f = \x ys -> c (f x) ys
 head                    :: [a] -> a
 head (x:_)              =  x
 head []                 =  badHead
+{-# NOINLINE [1] head #-}
 
 badHead :: a
 badHead = errorEmptyList "head"
@@ -90,16 +101,17 @@ badHead = errorEmptyList "head"
                 head (augment g xs) = g (\x _ -> x) (head xs)
  #-}
 
+uncons                  :: [a] -> Maybe (a, [a])
+uncons []               = Nothing
+uncons (x:xs)           = Just (x, xs)
+
 tail                    :: [a] -> [a]
 tail (_:xs)             =  xs
 tail []                 =  errorEmptyList "tail"
 
 last                    :: [a] -> a
-last []                 =  errorEmptyList "last"
-last (x:xs)             =  last' x xs
-  where last' y []     = y
-        last' _ (y:ys) = last' y ys
-
+-- use foldl to allow fusion
+last = foldl (\_ x -> x) (errorEmptyList "last")
 
 init                    :: [a] -> [a]
 init []                 =  errorEmptyList "init"
@@ -112,13 +124,28 @@ null []                 =  True
 null (_:_)              =  False
 
 
+{-# NOINLINE [1] length #-}
 length                  :: [a] -> Int
-length l                =  len l 0#
-  where
-    len :: [a] -> Int# -> Int
-    len []     a# = I# a#
-    len (_:xs) a# = len xs (a# +# 1#)
+length l                =  lenAcc l 0#
 
+lenAcc :: [a] -> Int# -> Int
+lenAcc []     a# = I# a#
+lenAcc (_:xs) a# = lenAcc xs (a# +# 1#)
+
+incLen :: a -> (Int# -> Int) -> Int# -> Int
+incLen _ g x = g (x +# 1#)
+
+-- These rules make length into a good consumer
+-- Note that we use a higher-order-style use of foldr, so that
+-- the accumulating parameter can be evaluated strictly
+-- See Trac #876 for what goes wrong otherwise
+{-# RULES
+"length"     [~1] forall xs. length xs = foldr incLen I# xs 0#
+"lengthList" [1]  foldr incLen I# = lenAcc
+ #-}
+
+
+{-# NOINLINE [1] filter #-}
 filter :: (a -> Bool) -> [a] -> [a]
 filter _pred []    = []
 filter pred (x:xs)
@@ -136,14 +163,14 @@ filterFB c p x r | p x       = x `c` r
 "filterFB"        forall c p q. filterFB (filterFB c p) q = filterFB c (\x -> q x && p x)
  #-}
 
+foldl :: forall a b. (b -> a -> b) -> b -> [a] -> b
+{-# INLINE foldl #-}
+foldl k z0 xs = foldr (\(v::a) (fn::b->b) (z::b) -> fn (k z v)) (id :: b -> b) xs z0
+-- Implementing foldl via foldr is only a good idea if the compiler can optimize
+-- the resulting code (eta-expand the recursive "go"), so this needs -fcall-arity!
+-- Also see #7994
 
-foldl        :: (a -> b -> a) -> a -> [b] -> a
-foldl f z0 xs0 = lgo z0 xs0
-             where
-                lgo z []     =  z
-                lgo z (x:xs) = lgo (f z x) xs
-
-scanl                   :: (a -> b -> a) -> a -> [b] -> [a]
+scanl                   :: (b -> a -> b) -> b -> [a] -> [b]
 scanl f q ls            =  q : (case ls of
                                 []   -> []
                                 x:xs -> scanl f (f q x) xs)
@@ -168,9 +195,11 @@ scanr1 _ [x]            =  [x]
 scanr1 f (x:xs)         =  f x q : qs
                            where qs@(q:_) = scanr1 f xs
 
+{-# NOINLINE [1] iterate #-}
 iterate :: (a -> a) -> a -> [a]
 iterate f x =  x : iterate f (f x)
 
+{-# NOINLINE [0] iterateFB #-}
 iterateFB :: (a -> b -> b) -> (a -> a) -> a -> b
 iterateFB c f x = x `c` iterateFB c f (f x)
 
@@ -227,7 +256,7 @@ splitAt                :: Int -> [a] -> ([a],[a])
 {-# INLINE takeFoldr #-}
 takeFoldr :: Int -> [a] -> [a]
 takeFoldr (I# n#) xs
-  = build (\c nil -> if n# <=# 0# then nil else
+  = build (\c nil -> if isTrue# (n# <=# 0#) then nil else
                      foldr (takeFB c nil) (takeConst nil) xs n#)
 
 {-# NOINLINE [0] takeConst #-}
@@ -236,18 +265,26 @@ takeFoldr (I# n#) xs
 takeConst :: a -> Int# -> a
 takeConst x _ = x
 
-{-# NOINLINE [0] takeFB #-}
+
+{-# INLINE [0] takeFB #-}
 takeFB :: (a -> b -> b) -> b -> a -> (Int# -> b) -> Int# -> b
-takeFB c n x xs m | m <=# 1#  = x `c` n
-                  | otherwise = x `c` xs (m -# 1#)
+-- The \m accounts for the fact that takeFB is used in a higher-order
+-- way by takeFoldr, so it's better to inline.  A good example is
+--     take n (repeat x)
+-- for which we get excellent code... but only if we inline takeFB
+-- when given four arguments
+takeFB c n x xs
+  = \ m -> if isTrue# (m <=# 1#)
+           then x `c` n
+           else x `c` xs (m -# 1#)
 
 {-# INLINE [0] take #-}
 take (I# n#) xs = takeUInt n# xs
 
 takeUInt :: Int# -> [b] -> [b]
 takeUInt n xs
-  | n >=# 0#  =  take_unsafe_UInt n xs
-  | otherwise =  []
+  | isTrue# (n >=# 0#) = take_unsafe_UInt n xs
+  | otherwise          = []
 
 take_unsafe_UInt :: Int# -> [b] -> [b]
 take_unsafe_UInt 0#  _  = []
@@ -258,8 +295,8 @@ take_unsafe_UInt m   ls =
 
 takeUInt_append :: Int# -> [b] -> [b] -> [b]
 takeUInt_append n xs rs
-  | n >=# 0#  =  take_unsafe_UInt_append n xs rs
-  | otherwise =  []
+  | isTrue# (n >=# 0#) = take_unsafe_UInt_append n xs rs
+  | otherwise          = []
 
 take_unsafe_UInt_append :: Int# -> [b] -> [b] -> [b]
 take_unsafe_UInt_append 0#  _ rs  = rs
@@ -270,8 +307,8 @@ take_unsafe_UInt_append m  ls rs  =
 
 
 drop (I# n#) ls
-  | n# <# 0#    = ls
-  | otherwise   = drop# n# ls
+  | isTrue# (n# <# 0#) = ls
+  | otherwise          = drop# n# ls
     where
         drop# :: Int# -> [a] -> [a]
         drop# 0# xs      = xs
@@ -279,8 +316,8 @@ drop (I# n#) ls
         drop# m# (_:xs)  = drop# (m# -# 1#) xs
 
 splitAt (I# n#) ls
-  | n# <# 0#    = ([], ls)
-  | otherwise   = splitAt# n# ls
+  | isTrue# (n# <# 0#) = ([], ls)
+  | otherwise          = splitAt# n# ls
     where
         splitAt# :: Int# -> [a] -> ([a], [a])
         splitAt# 0# xs     = ([], xs)
@@ -317,6 +354,9 @@ and (x:xs)      =  x && and xs
 or []           =  False
 or (x:xs)       =  x || or xs
 
+{-# NOINLINE [1] and #-}
+{-# NOINLINE [1] or #-}
+
 {-# RULES
 "and/build"     forall (g::forall b.(Bool->b->b)->b->b) .
                 and (build g) = g (&&) True
@@ -332,6 +372,8 @@ concatMap f             =  foldr ((++) . f) []
 concat :: [[a]] -> [a]
 concat = foldr (++) []
 
+{-# NOINLINE [1] concat #-}
+
 {-# RULES
   "concat" forall xs. concat xs = build (\c n -> foldr (\x y -> foldr c y x) n xs)
 -- We don't bother to turn non-fusible applications of concat back into concat
@@ -343,5 +385,3 @@ errorEmptyList fun =
 
 prel_list_str :: String
 prel_list_str = "Prelude."
-
-
