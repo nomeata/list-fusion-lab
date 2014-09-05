@@ -14,7 +14,7 @@ Description:    Test suite for benchmarking Data.List implementations
 Extra-Source-Files: README.md
 
 Executable list-fusion-lab
-    hs-source-dirs: test
+    hs-source-dirs: .
     Main-is: driver.hs
     Build-depends:
         base                 >= 4.6.0.1

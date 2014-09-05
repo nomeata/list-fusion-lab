@@ -4,6 +4,9 @@
 module Main where
 
 import Control.Monad
+import Criterion.Main
+import Criterion.Monad
+import Criterion.Report
 import Criterion.Types
 import Data.Aeson
 import Data.Data
@@ -11,12 +14,10 @@ import Data.Maybe
 import Data.Text
 import Data.Text.Lazy (fromStrict)
 import Data.Text.Lazy.Encoding
-import Data.Typeable
 import Filesystem.Path.CurrentOS hiding (decode)
 import Options.Applicative hiding (Success, (&))
 import Prelude hiding (FilePath)
 import Shelly.Lifted hiding ((</>), find, trace)
-import System.Environment
 import System.IO hiding (FilePath)
 import System.IO.Temp
 
@@ -24,7 +25,6 @@ data Options = Options
     { verbose      :: Bool
     , ghcPath      :: String
     , moduleName   :: String
-    , fileTemplate :: String
     , runQuantity  :: Int
     , cliArgs      :: [String]
     }
@@ -46,11 +46,6 @@ driverOpts = Options
          <> long "module"
          <> value "Data.List"
          <> help "Name of test module to import")
-    <*> strOption
-        (   short 'f'
-         <> long "file"
-         <> value "test/ListTestsTemplate.hs"
-         <> help "Path to test driver template")
     <*> option
         (   short 'n'
          <> long "number"
@@ -75,19 +70,23 @@ runTest opts = withSystemTempFile "listlab-exe" $ \exePath h -> do
     hClose h
 
     let ghcs = splitOn "," (pack (ghcPath opts))
-        mods = splitOn "," (pack (fileTemplate opts))
+        mods = splitOn "," (pack (moduleName opts))
 
     reports <- forM (cproduct ghcs mods) $ \(ghc, modName) -> shelly $ do
+        let exe = pack exePath
         run_ (fromText ghc)
-            [ "-o", pack exePath
+            [ "-o", exe
             , "-DDATA_LIST=" <> modName
             , "-DITERATIONS=" <> pack (show (runQuantity opts))
-            , pack (fileTemplate opts)
+            , "ListTestsTemplate.hs"
             ]
-        output <- run (decodeString exePath) []
+        output <- run (fromText exe) []
         let reports = decode (encodeUtf8 (fromStrict output)) :: Maybe [Report]
         return (ghc, modName, reports)
 
-    print reports
+    withConfig defaultConfig
+        { reportFile = Just "report.html"
+        }
+        $ report $ Prelude.concat [ z | (_, _, Just z) <- reports ]
   where
     cproduct xs ys = [ (x, y) | x <- xs, y <- ys ]
