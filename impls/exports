@@ -1,36 +1,37 @@
- ( (++)
- , and
 -- , augment
- , break
 -- , build
- , concat
- , concatMap
- , cycle
- , drop
- , dropWhile
+ ( foldr
+ , map
+ , (++)
+ , head
+ , tail
+ , last
+ , init
+ , null
+ , length
  , filter
  , foldl
- , foldr
- , foldr1
- , head
- , init
- , iterate
- , last
- , length
- , map
- , null
- , or
- , repeat
- , replicate
- , reverse
  , scanl
  , scanl1
+ , foldr1
  , scanr
  , scanr1
- , span
- , splitAt
- , tail
- , take
+ , iterate
+ , repeat
+ , replicate
+ , cycle
  , takeWhile
--- , uncons
+ , dropWhile
+ , take
+ , drop
+ , splitAt
+ , takeFoldr
+ , takeConst
+ , span
+ , break
+ , reverse
+ , and
+ , or
+ , concatMap
+ , concat
  )
