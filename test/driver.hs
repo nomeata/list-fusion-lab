@@ -3,6 +3,7 @@
 
 module Main where
 
+import Control.Monad
 import Data.Data
 import Data.Text
 import Data.Typeable
@@ -62,9 +63,11 @@ runTest :: Options -> IO ()
 runTest opts = withSystemTempFile "listlab-exe" $ \exePath h -> do
     hClose h
 
-    let ghc = ghcPath opts
-    shelly $ do
-        run_ (decodeString ghc)
+    let ghcs = splitOn "," (pack (ghcPath opts))
+        mods = splitOn "," (pack (fileTemplate opts))
+
+    forM_ (cproduct ghcs mods) $ \(ghc, mod) -> shelly $ do
+        run_ (fromText ghc)
             [ "-o", pack exePath
             , pack ("-DDATA_LIST=" ++ moduleName opts)
             , pack (fileTemplate opts)
@@ -72,3 +75,5 @@ runTest opts = withSystemTempFile "listlab-exe" $ \exePath h -> do
         -- jww (2014-09-05): Expect a list of CSV results
         _ <- run (decodeString exePath) []
         return ()
+  where
+    cproduct xs ys = [ (x, y) | x <- xs, y <- ys ]
