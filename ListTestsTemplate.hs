@@ -15,5 +15,8 @@ main = do
     reports <- mapM benchmark'
         [ nf mapF ITERATIONS
         , nf mapNF ITERATIONS
+        , nf appendF ITERATIONS
+        , nf appendNF ITERATIONS
+        , nf sumConcatInits ITERATIONS
         ]
     B.putStrLn $ encode reports
