@@ -345,3 +345,8 @@ prel_list_str :: String
 prel_list_str = "Prelude."
 
 
+inits                   :: [a] -> [[a]]
+inits xs                =  [] : case xs of
+                                  []      -> []
+                                  x : xs' -> map (x :) (inits xs')
+

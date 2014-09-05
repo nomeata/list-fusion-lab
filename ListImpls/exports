@@ -1,8 +1,10 @@
 -- , augment
 -- , build
+-- GHC.Base
  ( foldr
  , map
  , (++)
+-- GHC.List
  , head
  , tail
  , last
@@ -34,4 +36,5 @@
  , or
  , concatMap
  , concat
+-- Data.Lists
  )
