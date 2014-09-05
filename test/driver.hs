@@ -50,12 +50,8 @@ driverSummary :: String
 driverSummary = "The list-fusion-lab"
 
 main :: IO ()
-main = withStdoutLogging $ do
+main = do
     opts <- execParser optsDef
-
-    setLogLevel $ if verbose opts then LevelDebug else LevelInfo
-    setLogTimeFormat "%H:%M:%S"
-
     runTest opts
   where
     optsDef = info
