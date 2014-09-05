@@ -8,15 +8,22 @@ module Main where
 
 import           Benchmarks
 import           Criterion
+import           Criterion.Main
+import           Criterion.Types
 import           Data.Aeson
 import qualified Data.ByteString.Lazy.Char8 as B
 
+main :: IO ()
 main = do
-    reports <- mapM benchmark'
+    reports <- mapM go
         [ nf mapF ITERATIONS
         , nf mapNF ITERATIONS
         , nf appendF ITERATIONS
         , nf appendNF ITERATIONS
         , nf sumConcatInits ITERATIONS
         ]
-    B.putStrLn $ encode reports
+    B.putStr (encode reports)
+  where
+    go = benchmarkWith' defaultConfig
+        { verbosity = Quiet
+        }
