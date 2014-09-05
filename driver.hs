@@ -73,13 +73,14 @@ runTest opts = withSystemTempFile "listlab-exe" $ \exePath h -> do
         mods = splitOn "," (pack (moduleName opts))
 
     reports <- forM (cproduct ghcs mods) $ \(ghc, modName) -> shelly $ do
+        let exe = pack exePath
         run_ (fromText ghc)
-            [ "-o", pack exePath
+            [ "-o", exe
             , "-DDATA_LIST=" <> modName
             , "-DITERATIONS=" <> pack (show (runQuantity opts))
             , "ListTestsTemplate.hs"
             ]
-        output <- run (decodeString exePath) []
+        output <- run (fromText exe) []
         let reports = decode (encodeUtf8 (fromStrict output)) :: Maybe [Report]
         return (ghc, modName, reports)
 
