@@ -78,6 +78,8 @@ runTest opts = withSystemTempFile "listlab-exe" $ \exePath h -> do
             let exe = pack exePath
             run_ (fromText ghc)
                 [ "-o", exe
+                , "-O"
+                , "-fforce-recomp"
                 , "-DDATA_LIST=" <> modName
                 , "-DITERATIONS=" <> pack (show (runQuantity opts))
                 , "ListTestsTemplate.hs"
@@ -86,6 +88,8 @@ runTest opts = withSystemTempFile "listlab-exe" $ \exePath h -> do
             output <- TL.fromStrict <$> run (fromText exe) []
             let reports = decode (encodeUtf8 output) :: Maybe [Report]
             return (ghc, modName, reports)
+
+    print reports
 
     tmplDir <- getTemplateDir
     let tmplPath = decodeString tmplDir </> "default.tpl"
