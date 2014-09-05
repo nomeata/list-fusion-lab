@@ -72,7 +72,7 @@ runTest opts = withSystemTempFile "listlab-exe" $ \exePath h -> do
     shelly $ do
         run_ (decodeString ghc)
             [ "-o", pack exePath
-            , "-DDATA_LIST", pack (moduleName opts)
+            , pack ("-DDATA_LIST=" ++ moduleName opts)
             , pack (fileTemplate opts)
             ]
         -- jww (2014-09-05): Expect a list of CSV results

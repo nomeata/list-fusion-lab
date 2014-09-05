@@ -6,7 +6,11 @@
 
 module Main where
 
-import DATA_LIST
+import           Criterion
+import           DATA_LIST
+import           Data.Aeson
+import qualified Data.ByteString.Lazy as B
 
 main = do
-    
+    report <- benchmark' $ nf (take 1000 . repeat) ()
+    B.putStrLn $ encode report
