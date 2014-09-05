@@ -3,8 +3,6 @@
 
 module Main where
 
-import Control.Logging
-import Control.Monad.Logger (LogLevel(..))
 import Data.Data
 import Data.Text
 import Data.Typeable

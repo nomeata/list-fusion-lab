@@ -18,8 +18,6 @@ Executable list-fusion-lab
     Main-is: driver.hs
     Build-depends:
         base                 >= 4.6.0.1
-      , logging              >= 1.4  && < 1.5
-      , monad-logger         >= 0.3  && < 0.4
       , optparse-applicative >= 0.8  && < 1.0
       , temporary
       , system-filepath
