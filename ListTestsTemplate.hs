@@ -7,6 +7,7 @@
 module Main where
 
 import           Benchmarks
+import           Control.Monad
 import           Criterion
 import           Criterion.Main
 import           Criterion.Types
@@ -15,15 +16,18 @@ import qualified Data.ByteString.Lazy.Char8 as B
 
 main :: IO ()
 main = do
-    reports <- mapM go
-        [ nf mapF ITERATIONS
-        , nf mapNF ITERATIONS
-        , nf appendF ITERATIONS
-        , nf appendNF ITERATIONS
-        -- , nf sumConcatInits ITERATIONS
+    reports <- zipWithM go [0 ..]
+        [ ("mapF", nf mapF ITERATIONS)
+        , ("mapNF", nf mapNF ITERATIONS)
+        , ("appendF", nf appendF ITERATIONS)
+        , ("appendNF", nf appendNF ITERATIONS)
+        -- , ("sumConcatInits", nf sumConcatInits ITERATIONS)
         ]
     encodeFile "data" reports
   where
-    go = benchmarkWith' defaultConfig
-        { verbosity = Quiet
-        }
+    go n (name, b) = do
+        r <- benchmarkWith' defaultConfig
+            { verbosity = Quiet
+            } b
+        return $ r { reportName = name
+                   , reportNumber = n }
