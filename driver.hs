@@ -12,7 +12,8 @@ import Data.Aeson
 import Data.Data
 import Data.Maybe
 import Data.Text
-import Data.Text.Lazy (fromStrict)
+import qualified Data.Text.Lazy as TL
+import qualified Data.Text.Lazy.IO as TL
 import Data.Text.Lazy.Encoding
 import Filesystem.Path.CurrentOS hiding (decode)
 import Options.Applicative hiding (Success, (&))
@@ -72,21 +73,26 @@ runTest opts = withSystemTempFile "listlab-exe" $ \exePath h -> do
     let ghcs = splitOn "," (pack (ghcPath opts))
         mods = splitOn "," (pack (moduleName opts))
 
-    reports <- forM (cproduct ghcs mods) $ \(ghc, modName) -> shelly $ do
-        let exe = pack exePath
-        run_ (fromText ghc)
-            [ "-o", exe
-            , "-DDATA_LIST=" <> modName
-            , "-DITERATIONS=" <> pack (show (runQuantity opts))
-            , "ListTestsTemplate.hs"
-            ]
-        output <- run (fromText exe) []
-        let reports = decode (encodeUtf8 (fromStrict output)) :: Maybe [Report]
-        return (ghc, modName, reports)
+    reports <- forM (cproduct ghcs mods) $ \(ghc, modName) ->
+        shelly $ silently $ do
+            let exe = pack exePath
+            run_ (fromText ghc)
+                [ "-o", exe
+                , "-DDATA_LIST=" <> modName
+                , "-DITERATIONS=" <> pack (show (runQuantity opts))
+                , "ListTestsTemplate.hs"
+                ]
+            echo $ "Collecting data from: " <> ghc <> " + " <> modName
+            output <- TL.fromStrict <$> run (fromText exe) []
+            let reports = decode (encodeUtf8 output) :: Maybe [Report]
+            return (ghc, modName, reports)
 
-    withConfig defaultConfig
-        { reportFile = Just "report.html"
-        }
-        $ report $ Prelude.concat [ z | (_, _, Just z) <- reports ]
+    tmplDir <- getTemplateDir
+    let tmplPath = decodeString tmplDir </> "default.tpl"
+    tmpl <- readFile (encodeString tmplPath)
+    html <- formatReport
+        (Prelude.concat [ z | (_, _, Just z) <- reports ])
+        (pack tmpl)
+    TL.writeFile "report.html" html
   where
     cproduct xs ys = [ (x, y) | x <- xs, y <- ys ]
