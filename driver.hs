@@ -8,7 +8,7 @@ import Criterion.Main
 import Criterion.Monad
 import Criterion.Report
 import Criterion.Types
-import Data.Aeson
+import Data.Binary
 import Data.Data
 import Data.Maybe
 import Data.Text
@@ -85,17 +85,13 @@ runTest opts = withSystemTempFile "listlab-exe" $ \exePath h -> do
                 , "ListTestsTemplate.hs"
                 ]
             echo $ "Collecting data from: " <> ghc <> " + " <> modName
-            output <- TL.fromStrict <$> run (fromText exe) []
-            case eitherDecode' (encodeUtf8 output) of
-                Left e  -> error $ "Failed to decode: " ++ e
-                Right x -> return (ghc, modName, x)
+            run_ (fromText exe) []
+            liftIO $ decodeFile "data"
 
     tmplDir <- getTemplateDir
     let tmplPath = decodeString tmplDir </> "default.tpl"
     tmpl <- readFile (encodeString tmplPath)
-    html <- formatReport
-        (Prelude.concat [ z | (_, _, Just z) <- reports ])
-        (pack tmpl)
+    html <- formatReport (Prelude.concat reports) (pack tmpl)
     TL.writeFile "report.html" html
   where
     cproduct xs ys = [ (x, y) | x <- xs, y <- ys ]

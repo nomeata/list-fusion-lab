@@ -10,7 +10,7 @@ import           Benchmarks
 import           Criterion
 import           Criterion.Main
 import           Criterion.Types
-import           Data.Aeson
+import           Data.Binary
 import qualified Data.ByteString.Lazy.Char8 as B
 
 main :: IO ()
@@ -22,7 +22,7 @@ main = do
         , nf appendNF ITERATIONS
         -- , nf sumConcatInits ITERATIONS
         ]
-    B.putStr (encode reports)
+    encodeFile "data" reports
   where
     go = benchmarkWith' defaultConfig
         { verbosity = Quiet
