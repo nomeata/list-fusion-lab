@@ -3,7 +3,6 @@
 
 module Main where
 
-import Conduit.Simple
 import Control.Logging
 import Control.Monad.Logger (LogLevel(..))
 import Data.Data
@@ -66,25 +65,16 @@ main = withStdoutLogging $ do
         (fullDesc <> progDesc "" <> header driverSummary)
 
 runTest :: Options -> IO ()
-runTest opts = do
-    let path = fileTemplate opts
-    withSystemTempFile "listlab" $ \tempPath h -> do
-        sinkHandle h
-            $ unlinesC
-            $ mapC transform
-            $ linesUnboundedC
-            $ sourceFile path
-        hClose h
+runTest opts = withSystemTempFile "listlab-exe" $ \exePath h -> do
+    hClose h
 
-        withSystemTempFile "listlab-exe" $ \exePath h' -> do
-            hClose h'
-
-            let ghc = ghcPath opts
-            shelly $ do
-                run_ "ghc" ["-o", pack exePath, pack tempPath]
-                -- jww (2014-09-05): Expect a list of CSV results
-                _ <- run (decodeString exePath) []
-                return ()
-  where
-    transform "import Data.List -- REPLACE" = "import " ++ moduleName opts
-    transform x = x
+    let ghc = ghcPath opts
+    shelly $ do
+        run_ (decodeString ghc)
+            [ "-o", pack exePath
+            , "-DDATA_LIST", pack (moduleName opts)
+            , pack (fileTemplate opts)
+            ]
+        -- jww (2014-09-05): Expect a list of CSV results
+        _ <- run (decodeString exePath) []
+        return ()

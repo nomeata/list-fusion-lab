@@ -1,5 +1,12 @@
+{-# LANGUAGE CPP #-}
+
+#ifndef DATA_LIST
+#define DATA_LIST Data.List
+#endif
+
 module Main where
 
-import Data.List -- REPLACE
+import DATA_LIST
 
-main = putStrLn "Hello, world!"
+main = do
+    

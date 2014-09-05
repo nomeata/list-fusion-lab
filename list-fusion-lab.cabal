@@ -21,7 +21,6 @@ Executable list-fusion-lab
       , logging              >= 1.4  && < 1.5
       , monad-logger         >= 0.3  && < 0.4
       , optparse-applicative >= 0.8  && < 1.0
-      , simple-conduit
       , temporary
       , system-filepath
       , text
