@@ -1,0 +1,32 @@
+Name:           list-fusion-lab
+Version:        0.0.1
+Synopsis:       Test suite for benchmarking Data.List implementations
+Homepage:       https://github.com/nomeata/list-fusion-lab
+License:        BSD3
+License-file:   LICENSE
+Author:         John Wiegley
+Maintainer:     John Wiegley <johnw@newartisans.com>
+Category:       Development
+Build-type:     Simple
+Cabal-version:  >= 1.8
+Description:    Test suite for benchmarking Data.List implementations
+
+Extra-Source-Files: README.md
+
+Executable list-fusion-lab
+    hs-source-dirs: test
+    Main-is: driver.hs
+    Build-depends:
+        base                 >= 4.6.0.1
+      , logging              >= 1.4  && < 1.5
+      , monad-logger         >= 0.3  && < 0.4
+      , optparse-applicative >= 0.8  && < 1.0
+      , simple-conduit
+      , temporary
+      , system-filepath
+      , text
+      , shelly               >= 1.5  && < 1.6
+
+Source-repository head
+  type:     git
+  location: https://github.com/nomeata/list-fusion-lab
