@@ -27,8 +27,6 @@
  , take
  , drop
  , splitAt
- , takeFoldr
- , takeConst
  , span
  , break
  , reverse
@@ -37,4 +35,5 @@
  , concatMap
  , concat
 -- Data.Lists
+ , inits
  )
