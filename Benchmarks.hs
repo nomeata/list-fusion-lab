@@ -8,6 +8,7 @@
 module Benchmarks where
 
 import DATA_LIST
+import Prelude ((+), ($), Int, (.), sum, id)
 
 mapF :: Int -> [Int]
 mapF n    = map (+1) [0..n]
