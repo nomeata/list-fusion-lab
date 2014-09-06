@@ -104,7 +104,7 @@ runTest opts = withSystemTempFile "listlab-exe" $ \exePath h -> do
     let ghcs = splitOn "," (pack (ghcPath opts))
         mods = splitOn "," (pack (moduleName opts))
 
-    reports <- forM (cproduct ghcs mods) $ \(ghc, modName) -> do
+    reports <- forM (cproduct ghcs mods) $ \conf@(ghc, modName) -> do
         reps <- shelly $ silently $ do
             let exe = pack exePath
             run_ (fromText ghc)
@@ -115,7 +115,7 @@ runTest opts = withSystemTempFile "listlab-exe" $ \exePath h -> do
                 , "-DITERATIONS=" <> pack (show (runQuantity opts))
                 , "ListTestsTemplate.hs"
                 ]
-            echo $ "Collecting data from: " <> ghc <> " + " <> modName
+            echo $ "Collecting data from: " <> showConf conf
             run_ (fromText exe) []
             liftIO $ decodeFile "data"
         return $ map (reportToResult (ghc, modName)) reps
