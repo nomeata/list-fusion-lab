@@ -21,9 +21,11 @@ Executable list-fusion-lab
       , optparse-applicative >= 0.9  && < 0.10
       , binary
       , criterion            >= 1.0.0.0
+      , statistics
       , temporary
       , system-filepath
       , text
+      , containers
       , shelly               >= 1.5  && < 1.6
 
 Source-repository head
