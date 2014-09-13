@@ -1,7 +1,6 @@
 module ReportToMean where
 
 import Criterion.Types
-import Criterion.Types
 import Criterion.Analysis
 import Statistics.Resampling.Bootstrap
 
