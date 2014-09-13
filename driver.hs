@@ -1,23 +1,18 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections #-}
 
 module Main where
 
 import Control.Monad
-import Criterion.Main
-import Criterion.Monad
-import Criterion.Report
-import Criterion.Types
 import Data.Binary
 import Data.Data
 import Data.Maybe
 import Data.Text hiding (map)
 import Data.Text.IO
-import Control.Arrow (second)
+import Control.Arrow (first, second)
 import qualified Data.Map as M
-import qualified Data.Text.Lazy as TL
-import qualified Data.Text.Lazy.IO as TL
-import Data.Text.Lazy.Encoding
+import Data.Text.Encoding
 import Filesystem.Path.CurrentOS hiding (decode)
 import Options.Applicative hiding (Success, (&))
 import Prelude hiding (FilePath, readFile, putStrLn)
@@ -29,6 +24,7 @@ import ReportToMean
 
 data Options = Options
     { verbose      :: Bool
+    , useCriterion :: Bool
     , ghcPath      :: String
     , moduleName   :: String
     , runQuantity  :: Int
@@ -42,6 +38,9 @@ driverOpts = Options
         (   short 'v'
          <> long "verbose"
          <> help "Report progress verbosely")
+    <*> switch
+        (   long "criterion"
+         <> help "use criterion")
     <*> strOption
         (   short 'G'
          <> long "ghc"
@@ -71,6 +70,7 @@ main = do
         (helper <*> driverOpts)
         (fullDesc <> progDesc "" <> header driverSummary)
 
+{-
 reportToResult :: Configuration -> Report -> Result
 reportToResult conf rep = (pack (reportName rep), (conf, reportToMean rep))
 
@@ -81,6 +81,7 @@ reportsToFile reports = do
     tmpl <- readFile (encodeString tmplPath)
     html <- formatReport reports tmpl
     TL.writeFile "report.html" html
+-}
 
 type Configuration = (GHC, Module)
 type Result = (BenchName, (Configuration, Double))
@@ -88,8 +89,8 @@ type GHC = Text
 type BenchName = Text
 type Module = Text
 
-renderOurReport :: [Result] -> IO ()
-renderOurReport results = forM_ (groupEqual results) $ \(b, rs) -> do
+renderResults :: [Result] -> IO ()
+renderResults results = forM_ (groupEqual results) $ \(b, rs) -> do
     putStrLn $ "Benchmark " <> b <> ":"
     forM rs $ \(c,v) -> do
         putStrLn $ showConf c <> " " <> pack (show v)
@@ -113,14 +114,16 @@ runTest opts = withSystemTempFile "listlab-exe" $ \exePath h -> do
                 , "-fforce-recomp"
                 , "-DDATA_LIST=" <> modName
                 , "-DITERATIONS=" <> pack (show (runQuantity opts))
+                , "-DMEASURE=" <> (if useCriterion opts
+                                   then "MeasureCriterion"
+                                   else "MeasureNaive")
                 , "ListTestsTemplate.hs"
                 ]
             echo $ "Collecting data from: " <> showConf conf
             run_ (fromText exe) []
             liftIO $ decodeFile "data"
-        return $ map (reportToResult (ghc, modName)) reps
-    --reportsToFile (Prelude.concat reports)
-    renderOurReport (Prelude.concat reports)
+        return $ map (\(n,r) -> (decodeUtf8 n, (conf, r))) reps
+    renderResults (Prelude.concat reports)
 
   where
     cproduct xs ys = [ (x, y) | x <- xs, y <- ys ]
