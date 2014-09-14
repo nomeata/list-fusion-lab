@@ -114,8 +114,8 @@ renderResults :: [Result] -> IO ()
 renderResults results = forM_ (groupEqual results) $ \(b, rs) -> do
     let printer = scaledShow (map snd rs)
     putStrLn $ "Benchmark " <> b <> ":"
-    let rows = [showConf c <> " " <> printer v | (c,v) <- rs]
-    putStr (alignAt " " rows)
+    let rows = [[showConf c, printer v] | (c,v) <- rs]
+    putStr (align " " [L,R] rows)
 
 
 showConf :: Configuration -> Text
@@ -156,12 +156,16 @@ groupEqual :: Ord a => [(a,b)] -> [(a, [b])]
 groupEqual xs = M.toList (M.fromListWith (++) (map (second ((:[]))) xs))
 
 
-alignAt :: Text -> [Text] -> Text
-alignAt d lines = T.unlines (map expands rows)
-  where rows = map (splitOn d) lines
-        widths = [map T.length r ++ repeat 0 | r <- rows]
+data Align = L | R
+
+align :: Text -> [Align] -> [[Text]] -> Text
+align d al rows = T.unlines (map expands rows)
+  where widths = [map T.length r ++ repeat 0 | r <- rows]
         colwidths = map maximum (transpose widths)
-        expand n s = s <> T.replicate (n - T.length s) (singleton ' ')
+        alignments = al ++ repeat L
+        expand n a s = s `comb` fill
+            where fill = T.replicate (n - T.length s) (singleton ' ')
+                  comb = case a of L -> (<>); R -> flip (<>)
         expands [] = ""
-        expands r = T.intercalate d $ zipWith expand colwidths (init r) ++ [last r]
+        expands r = T.intercalate d $ zipWith3 expand colwidths alignments r
 
