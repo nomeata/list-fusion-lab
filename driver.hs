@@ -8,7 +8,7 @@ import Control.Monad
 import Data.Binary
 import Data.Data
 import Data.Maybe
-import Data.Text hiding (map, maximum, find)
+import Data.Text as T hiding (map, maximum, find, zipWith, init, last, concat, transpose)
 import Data.List
 import Data.Text.IO
 import Data.Text.Lazy (toStrict)
@@ -17,12 +17,13 @@ import Data.Text.Lazy.Builder.RealFloat
 import Control.Arrow (first, second)
 import qualified Data.Map as M
 import Data.Text.Encoding
-import Filesystem.Path.CurrentOS hiding (decode)
+import Filesystem.Path.CurrentOS hiding (decode, concat)
 import Options.Applicative hiding (Success, (&))
-import Prelude hiding (FilePath, readFile, putStrLn)
+import Prelude hiding (FilePath, readFile, putStrLn, putStr, replicate, unlines)
 import Shelly.Lifted hiding ((</>), find, trace)
-import System.IO hiding (FilePath, readFile, putStrLn)
+import System.IO hiding (FilePath, readFile, putStrLn, putStr)
 import System.IO.Temp
+import Data.Monoid
 
 import ReportToMean
 
@@ -113,8 +114,8 @@ renderResults :: [Result] -> IO ()
 renderResults results = forM_ (groupEqual results) $ \(b, rs) -> do
     let printer = scaledShow (map snd rs)
     putStrLn $ "Benchmark " <> b <> ":"
-    forM rs $ \(c,v) -> do
-        putStrLn $ showConf c <> " " <> printer v
+    let rows = [showConf c <> " " <> printer v | (c,v) <- rs]
+    putStr (alignAt " " rows)
 
 
 showConf :: Configuration -> Text
@@ -150,6 +151,17 @@ runTest opts = withSystemTempFile "listlab-exe" $ \exePath h -> do
   where
     cproduct xs ys = [ (x, y) | x <- xs, y <- ys ]
 
+-- Nice generic functions copied from elsewhere
 groupEqual :: Ord a => [(a,b)] -> [(a, [b])]
 groupEqual xs = M.toList (M.fromListWith (++) (map (second ((:[]))) xs))
+
+
+alignAt :: Text -> [Text] -> Text
+alignAt d lines = T.unlines (map expands rows)
+  where rows = map (splitOn d) lines
+        widths = [map T.length r ++ repeat 0 | r <- rows]
+        colwidths = map maximum (transpose widths)
+        expand n s = s <> T.replicate (n - T.length s) (singleton ' ')
+        expands [] = ""
+        expands r = T.intercalate d $ zipWith expand colwidths (init r) ++ [last r]
 
