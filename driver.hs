@@ -8,8 +8,12 @@ import Control.Monad
 import Data.Binary
 import Data.Data
 import Data.Maybe
-import Data.Text hiding (map)
+import Data.Text hiding (map, maximum, find)
+import Data.List
 import Data.Text.IO
+import Data.Text.Lazy (toStrict)
+import Data.Text.Lazy.Builder (toLazyText)
+import Data.Text.Lazy.Builder.RealFloat
 import Control.Arrow (first, second)
 import qualified Data.Map as M
 import Data.Text.Encoding
@@ -89,11 +93,29 @@ type GHC = Text
 type BenchName = Text
 type Module = Text
 
+scaledShow :: [Double] -> Double -> Text
+scaledShow list = \v -> showDouble (v/factor) <> singleton ' ' <> unit
+  where
+    -- is it really that complicated?
+    showDouble = toStrict . toLazyText . formatRealFloat Fixed (Just 3)
+    max = maximum list
+    (unit, factor) =
+        fromMaybe ("s", 1) $
+        find (\(u,s) -> max < 1000 * s)
+        [ ("ns", 1e-9)
+        , ("µs", 1e-6)
+        , ("ms", 1e-3)
+        ]
+
+
+
 renderResults :: [Result] -> IO ()
 renderResults results = forM_ (groupEqual results) $ \(b, rs) -> do
+    let printer = scaledShow (map snd rs)
     putStrLn $ "Benchmark " <> b <> ":"
     forM rs $ \(c,v) -> do
-        putStrLn $ showConf c <> " " <> pack (show v)
+        putStrLn $ showConf c <> " " <> printer v
+
 
 showConf :: Configuration -> Text
 showConf (g,m) = m <> "/" <> g
